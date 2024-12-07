@@ -1,4 +1,3 @@
-# .github/actions/setup-heroku/action.yml
 name: 'Setup Heroku'
 description: 'Installs and configures Heroku CLI'
 

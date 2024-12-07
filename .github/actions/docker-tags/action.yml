@@ -1,0 +1,29 @@
+name: 'Extract Docker Tags'
+description: 'Extracts Docker tags and metadata for an image'
+
+inputs:
+  tags:
+    description: 'Types of tags to create'
+    required: true
+
+outputs:
+  tags:
+    description: 'Generated tags'
+    value: ${{ steps.meta.outputs.tags }}
+  version:
+    description: 'Version from metadata'
+    value: ${{ steps.meta.outputs.version }}
+  labels:
+    description: 'Generated labels'
+    value: ${{ steps.meta.outputs.labels }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Extract GitHub Refs for Docker Meta
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}
+        flavor: latest=false
+        tags: ${{ inputs.tags }}

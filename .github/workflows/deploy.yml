@@ -1,4 +1,3 @@
-# .github/workflows/shared-deploy.yml
 name: Shared Deploy
 on:
   workflow_call:
@@ -27,15 +26,19 @@ jobs:
       HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-docker
+
+      - uses: wedgworth/actions/.github/actions/setup-docker@v0.3.0
         with:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
-      - uses: ./.github/actions/setup-heroku
+
+      - uses: wedgworth/actions/.github/actions/setup-heroku@v0.3.0
         with:
             api-key: ${{ secrets.HEROKU_API_KEY }}
+
       - name: Push All Processes
         run: heroku container:push -a ${{ inputs.app-name }} ${{ inputs.processes }} -R --arg VERSION=main,GITHUB_SHA=${{ github.sha }}
         working-directory: ./deploy
+
       - name: Release
         run: heroku container:release -a ${{ inputs.app-name }} ${{ inputs.processes }}

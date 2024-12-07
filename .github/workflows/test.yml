@@ -1,4 +1,3 @@
-# .github/workflows/shared-test.yml
 name: Shared Test and Build
 on:
   workflow_call:
@@ -43,7 +42,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: wedgworth/actions/.github/actions/setup-node@v0.2.0
+      - uses: wedgworth/actions/.github/actions/setup-node@v0.3.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -55,13 +54,17 @@ jobs:
       - uses: styfle/cancel-workflow-action@0.12.1
         with:
           access_token: ${{ github.token }}
+
       - uses: actions/checkout@v4
-      - uses: wedgworth/actions/.github/actions/setup-node@v0.2.0
+
+      - uses: wedgworth/actions/.github/actions/setup-node@v0.3.0
         with:
           node-version: ${{ env.NODE_VERSION }}
+
       - name: Test
         run: yarn test
-      - uses: wedgworth/actions/.github/actions/report-coverage@v0.2.0
+
+      - uses: wedgworth/actions/.github/actions/report-coverage@v0.3.0
         with:
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           coverage-file: ./js-coverage/coverage-final.json
@@ -90,23 +93,23 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      - uses: wedgworth/actions/.github/actions/setup-docker@v0.2.0
+
+      - uses: wedgworth/actions/.github/actions/setup-docker@v0.3.0
         with:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
 
-      - name: Extract GitHub Refs for Docker Meta
+      - name: Extract Tags
+        uses: wedgworth/actions/.github/actions/docker-tags@v0.3.0
         id: meta
-        uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
-          flavor: latest=false
           tags: |
             type=ref,event=branch
             type=ref,event=tag
             type=ref,event=pr
             type=semver,pattern={{raw}}
             type=sha
+
       - name: Build Test Image
         uses: docker/build-push-action@v6
         with:
@@ -123,8 +126,10 @@ jobs:
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
       - name: Check Migrations
         run: docker run -e DATABASE_URL --network host ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} python manage.py makemigrations --check --dry-run
+
       - name: Python Test
         env:
           GITHUB_SHA: ${{ github.sha }}
@@ -137,11 +142,13 @@ jobs:
             -e GITHUB_SHA \
             --network host\
             ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} ./test.sh
-      - uses: wedgworth/actions/.github/actions/report-coverage@v0.2.0
+
+      - uses: wedgworth/actions/.github/actions/report-coverage@v0.3.0
         with:
             codecov-token: ${{ secrets.CODECOV_TOKEN }}
             coverage-file: ./ci-shared/coverage.xml
             flags: backend
+
       - name: Build and Push Production Image
         uses: docker/build-push-action@v6
         with:

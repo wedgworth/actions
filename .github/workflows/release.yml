@@ -1,4 +1,3 @@
-# .github/workflows/shared-release.yml
 name: Shared Release
 on:
   workflow_call:
@@ -27,22 +26,25 @@ jobs:
       HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
     steps:
       - uses: actions/checkout@v4
-      - uses: wedgworth/actions/.github/actions/setup-docker@v0.2.0
+
+      - uses: wedgworth/actions/.github/actions/setup-docker@v0.3.0
         with:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
-      - uses: wedgworth/actions/.github/actions/setup-heroku@v0.2.0
+
+      - uses: wedgworth/actions/.github/actions/setup-heroku@v0.3.0
         with:
           api-key: ${{ secrets.HEROKU_API_KEY }}
+
       - name: Pull Latest Image
-        run: docker pull ghcr.io/${{ github.repository }}:main
+        run: docker pull ghcr.io/${{ github.repository }}:main'
+
       - name: Extract Tags
+        uses: wedgworth/actions/.github/actions/docker-tags@v0.3.0
         id: meta
-        uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
-          flavor: latest=false
           tags: type=semver,pattern={{ raw }}
+
       - name: Tag Latest Image
         run: |
           docker tag ghcr.io/${{ github.repository }}:main ${{ steps.meta.outputs.tags }}
@@ -52,8 +54,10 @@ jobs:
           done
           docker push ${{ steps.meta.outputs.tags }}
           docker push ghcr.io/${{ github.repository }}:latest
+
       - name: Push Tagged Image to Heroku
         run: heroku container:push ${{ inputs.processes }} -R -a ${{ inputs.app-name }} --arg VERSION=$GITHUB_REF_NAME
         working-directory: ./deploy
+
       - name: Heroku Release
         run: heroku container:release ${{ inputs.processes }} -a ${{ inputs.app-name }}
