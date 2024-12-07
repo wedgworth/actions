@@ -27,11 +27,11 @@ jobs:
       HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-docker
+      - uses: wedgworth/actions/.github/actions/setup-docker@v0.2.0
         with:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
-      - uses: ./.github/actions/setup-heroku
+      - uses: wedgworth/actions/.github/actions/setup-heroku@v0.2.0
         with:
           api-key: ${{ secrets.HEROKU_API_KEY }}
       - name: Pull Latest Image

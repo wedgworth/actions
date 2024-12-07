@@ -7,11 +7,6 @@ on:
         required: true
         type: string
         description: "Directory containing Python source code to lint"
-      run-worker:
-        required: false
-        type: boolean
-        default: false
-        description: "Whether to run worker process"
     secrets:
       CODECOV_TOKEN:
         required: true
@@ -48,7 +43,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-node
+      - uses: wedgworth/actions/.github/actions/setup-node@v0.2.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -61,12 +56,12 @@ jobs:
         with:
           access_token: ${{ github.token }}
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-node
+      - uses: wedgworth/actions/.github/actions/setup-node@v0.2.0
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Test
         run: yarn test
-      - uses: ./.github/actions/report-coverage
+      - uses: wedgworth/actions/.github/actions/report-coverage@v0.2.0
         with:
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           coverage-file: ./js-coverage/coverage-final.json
@@ -95,7 +90,7 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-docker
+      - uses: wedgworth/actions/.github/actions/setup-docker@v0.2.0
         with:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
@@ -142,7 +137,7 @@ jobs:
             -e GITHUB_SHA \
             --network host\
             ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} ./test.sh
-      - uses: ./.github/actions/report-coverage
+      - uses: wedgworth/actions/.github/actions/report-coverage@v0.2.0
         with:
             codecov-token: ${{ secrets.CODECOV_TOKEN }}
             coverage-file: ./ci-shared/coverage.xml

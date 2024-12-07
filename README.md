@@ -26,7 +26,7 @@ on:
 
 jobs:
   test-and-build:
-    uses: wedgworth/actions/.github/workflows/shared-test.yml@v1
+    uses: wedgworth/actions/.github/workflows/test.yml@main
     with:
       python-src-dir: ruth
       run-worker: true
@@ -39,7 +39,7 @@ jobs:
   deploy-qa:
     needs: [test-and-build]
     if: ${{ github.event.ref == 'refs/heads/main' }}
-    uses: wedgworth/actions/.github/workflows/shared-deploy.yml@v1
+    uses: wedgworth/actions/.github/workflows/deploy.yml@main
     with:
       app-name: ruth-qa
       processes: web release worker
@@ -60,7 +60,7 @@ on:
 
 jobs:
   release:
-    uses: wedgworth/actions/.github/workflows/shared-release.yml@v1
+    uses: wedgworth/actions/.github/workflows/release.yml@main
     with:
       app-name: ruth
       processes: web release worker
