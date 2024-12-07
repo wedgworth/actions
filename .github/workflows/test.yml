@@ -19,6 +19,7 @@ on:
 env:
   PYTHON_VERSION: "3.13"
   NODE_VERSION: "20"
+  ACTIONS_VERSION: v0.5.1
 
 jobs:
   lint-python:
@@ -42,7 +43,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: wedgworth/actions/.github/actions/setup-node@v0.5.0
+      - uses: wedgworth/actions/.github/actions/setup-node@${{ env.ACTIONS_VERSION }}
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -57,14 +58,14 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - uses: wedgworth/actions/.github/actions/setup-node@v0.5.0
+      - uses: wedgworth/actions/.github/actions/setup-node@${{ env.ACTIONS_VERSION }}
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Test
         run: yarn test
 
-      - uses: wedgworth/actions/.github/actions/report-coverage@v0.5.0
+      - uses: wedgworth/actions/.github/actions/report-coverage@${{ env.ACTIONS_VERSION }}
         with:
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           coverage-file: ./js-coverage/coverage-final.json
@@ -94,13 +95,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: wedgworth/actions/.github/actions/setup-docker@v0.5.0
+      - uses: wedgworth/actions/.github/actions/setup-docker@${{ env.ACTIONS_VERSION }}
         with:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
 
       - name: Extract Tags
-        uses: wedgworth/actions/.github/actions/docker-tags@v0.5.0
+        uses: wedgworth/actions/.github/actions/docker-tags@${{ env.ACTIONS_VERSION }}
         id: meta
         with:
           tags: |
@@ -143,7 +144,7 @@ jobs:
             --network host\
             ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} ./test.sh
 
-      - uses: wedgworth/actions/.github/actions/report-coverage@v0.5.0
+      - uses: wedgworth/actions/.github/actions/report-coverage@${{ env.ACTIONS_VERSION }}
         with:
             codecov-token: ${{ secrets.CODECOV_TOKEN }}
             coverage-file: ./ci-shared/coverage.xml

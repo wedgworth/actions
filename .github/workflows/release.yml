@@ -20,6 +20,9 @@ on:
       CR_PAT:
         required: true
 
+env:
+  ACTIONS_VERSION: v0.5.1
+
 jobs:
   promote-tag:
     name: Production Deploy
@@ -32,21 +35,21 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Heroku
-        uses: wedgworth/actions/.github/actions/setup-heroku@v0.5.0
+        uses: wedgworth/actions/.github/actions/setup-heroku@${{ env.ACTIONS_VERSION }}
         with:
           api-key: ${{ secrets.HEROKU_API_KEY }}
 
       - name: Setup Docker
-        uses: wedgworth/actions/.github/actions/setup-docker@v0.5.0
+        uses: wedgworth/actions/.github/actions/setup-docker@${{ env.ACTIONS_VERSION }}
         with:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
 
       - name: Pull Latest Image
-        run: docker pull ghcr.io/${{ github.repository }}:main'
+        run: docker pull ghcr.io/${{ github.repository }}:main
 
       - name: Extract Tags
-        uses: wedgworth/actions/.github/actions/docker-tags@v0.5.0
+        uses: wedgworth/actions/.github/actions/docker-tags@${{ env.ACTIONS_VERSION }}
         id: meta
         with:
           tags: type=semver,pattern={{ raw }}
