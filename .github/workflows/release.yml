@@ -11,8 +11,6 @@ on:
         type: string
         description: "Space-separated list of processes to deploy (e.g., 'web worker release')"
     secrets:
-      HEROKU_EMAIL:
-        required: true
       HEROKU_API_KEY:
         required: true
       CR_UN:
@@ -25,19 +23,18 @@ jobs:
     name: Production Deploy
     runs-on: ubuntu-24.04
     env:
-      HEROKU_EMAIL: ${{ secrets.HEROKU_EMAIL }}
       HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Setup Heroku
-        uses: wedgworth/actions/.github/actions/setup-heroku@v0.5.3
+        uses: wedgworth/actions/.github/actions/setup-heroku@v0.5.4
         with:
           api-key: ${{ secrets.HEROKU_API_KEY }}
 
       - name: Setup Docker
-        uses: wedgworth/actions/.github/actions/setup-docker@v0.5.3
+        uses: wedgworth/actions/.github/actions/setup-docker@v0.5.4
         with:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
@@ -46,7 +43,7 @@ jobs:
         run: docker pull ghcr.io/${{ github.repository }}:main
 
       - name: Extract Tags
-        uses: wedgworth/actions/.github/actions/docker-tags@v0.5.3
+        uses: wedgworth/actions/.github/actions/docker-tags@v0.5.4
         id: meta
         with:
           tags: type=semver,pattern={{ raw }}
