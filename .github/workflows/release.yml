@@ -1,0 +1,59 @@
+# .github/workflows/shared-release.yml
+name: Shared Release
+on:
+  workflow_call:
+    inputs:
+      app-name:
+        required: true
+        type: string
+        description: "Heroku app name to deploy to"
+      processes:
+        required: true
+        type: string
+        description: "Space-separated list of processes to deploy (e.g., 'web worker release')"
+    secrets:
+      HEROKU_API_KEY:
+        required: true
+      CR_UN:
+        required: true
+      CR_PAT:
+        required: true
+
+jobs:
+  promote-tag:
+    name: Release to Production
+    runs-on: ubuntu-24.04
+    env:
+      HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-docker
+        with:
+          cr-username: ${{ secrets.CR_UN }}
+          cr-token: ${{ secrets.CR_PAT }}
+      - uses: ./.github/actions/setup-heroku
+        with:
+          api-key: ${{ secrets.HEROKU_API_KEY }}
+      - name: Pull Latest Image
+        run: docker pull ghcr.io/${{ github.repository }}:main
+      - name: Extract Tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          flavor: latest=false
+          tags: type=semver,pattern={{ raw }}
+      - name: Tag Latest Image
+        run: |
+          docker tag ghcr.io/${{ github.repository }}:main ${{ steps.meta.outputs.tags }}
+          docker tag ghcr.io/${{ github.repository }}:main ghcr.io/${{ github.repository }}:latest
+          for process in ${{ inputs.processes }}; do
+            docker tag ${{ steps.meta.outputs.tags }} registry.heroku.com/${{ inputs.app-name }}/$process
+          done
+          docker push ${{ steps.meta.outputs.tags }}
+          docker push ghcr.io/${{ github.repository }}:latest
+      - name: Push Tagged Image to Heroku
+        run: heroku container:push ${{ inputs.processes }} -R -a ${{ inputs.app-name }} --arg VERSION=$GITHUB_REF_NAME
+        working-directory: ./deploy
+      - name: Heroku Release
+        run: heroku container:release ${{ inputs.processes }} -a ${{ inputs.app-name }}

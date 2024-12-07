@@ -1,0 +1,21 @@
+# .github/actions/setup-heroku/action.yml
+name: 'Setup Heroku'
+description: 'Installs and configures Heroku CLI'
+
+inputs:
+  api-key:
+    description: 'Heroku API key'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Heroku
+      shell: bash
+      run: curl https://cli-assets.heroku.com/install.sh | sh
+
+    - name: Heroku Container Login
+      shell: bash
+      env:
+        HEROKU_API_KEY: ${{ inputs.api-key }}
+      run: heroku container:login

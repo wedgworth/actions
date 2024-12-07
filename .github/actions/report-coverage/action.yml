@@ -1,0 +1,24 @@
+# .github/actions/report-coverage/action.yml
+name: 'Report Coverage'
+description: 'Reports code coverage to Codecov'
+
+inputs:
+  codecov-token:
+    description: 'Codecov token'
+    required: true
+  coverage-file:
+    description: 'Path to coverage file'
+    required: true
+  flags:
+    description: 'Coverage flags'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: codecov/codecov-action@v5
+      with:
+        token: ${{ inputs.codecov-token }}
+        files: ${{ inputs.coverage-file }}
+        flags: ${{ inputs.flags }}
+        fail_ci_if_error: true

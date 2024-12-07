@@ -1,0 +1,32 @@
+# .github/actions/setup-node/action.yml
+name: 'Setup Node'
+description: 'Sets up Node.js with caching and yarn'
+
+inputs:
+  node-version:
+    description: 'Node version to use'
+    required: false
+    default: '20'
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Cache Node
+      id: node-cache
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: v2-${{ runner.os }}-javascript-${{ inputs.node-version }}-${{ hashFiles('yarn.lock') }}
+
+    - name: Enable corepack
+      shell: bash
+      run: corepack enable
+
+    - name: Install Dependencies
+      if: steps.node-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: yarn install

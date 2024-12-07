@@ -1,0 +1,165 @@
+# .github/workflows/shared-test.yml
+name: Shared Test and Build
+on:
+  workflow_call:
+    inputs:
+      python-src-dir:
+        required: true
+        type: string
+        description: "Directory containing Python source code to lint"
+      run-worker:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to run worker process"
+    secrets:
+      CODECOV_TOKEN:
+        required: true
+      CR_UN:
+        required: true
+      CR_PAT:
+        required: true
+      SENTRY_AUTH_TOKEN:
+        required: true
+
+env:
+  PYTHON_VERSION: "3.13"
+  NODE_VERSION: "20"
+
+jobs:
+  lint-python:
+    name: Lint - Python
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: styfle/cancel-workflow-action@0.12.1
+        with:
+          access_token: ${{ github.token }}
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Lint
+        uses: astral-sh/ruff-action@v2
+        with:
+          src: ${{ inputs.python-src-dir }}
+
+  install-node-deps:
+    name: Install Node Dependencies
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+  test-frontend:
+    name: Test - Frontend
+    runs-on: ubuntu-24.04
+    needs: [install-node-deps]
+    steps:
+      - uses: styfle/cancel-workflow-action@0.12.1
+        with:
+          access_token: ${{ github.token }}
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Test
+        run: yarn test
+      - uses: ./.github/actions/report-coverage
+        with:
+          codecov-token: ${{ secrets.CODECOV_TOKEN }}
+          coverage-file: ./js-coverage/coverage-final.json
+          flags: frontend
+
+  build-and-push-images:
+    name: Build, Test, and Push Images
+    runs-on: ubuntu-24.04
+    needs: [lint-python, test-frontend]
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_SSL: "off"
+      DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres"
+      DJANGO_DEBUG: 0
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-docker
+        with:
+          cr-username: ${{ secrets.CR_UN }}
+          cr-token: ${{ secrets.CR_PAT }}
+
+      - name: Extract GitHub Refs for Docker Meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          flavor: latest=false
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=semver,pattern={{raw}}
+            type=sha
+      - name: Build Test Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./.docker/Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          load: true
+          build-args: |
+            DEV_MODE=1
+            GIT_COMMIT=${{ github.sha }}
+            GIT_VERSION=${{ github.ref }}
+            VERSION=${{ steps.meta.outputs.version }}
+            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Check Migrations
+        run: docker run -e DATABASE_URL --network host ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} python manage.py makemigrations --check --dry-run
+      - name: Python Test
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          mkdir ci-shared && \
+          chmod 777 ci-shared && \
+          docker run \
+            -v "${{ github.workspace }}/ci-shared:/opt/shared" \
+            -e DATABASE_URL \
+            -e GITHUB_SHA \
+            --network host\
+            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} ./test.sh
+      - uses: ./.github/actions/report-coverage
+        with:
+            codecov-token: ${{ secrets.CODECOV_TOKEN }}
+            coverage-file: ./ci-shared/coverage.xml
+            flags: backend
+      - name: Build and Push Production Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./.docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            DEV_MODE=0
+            GIT_COMMIT=${{ github.sha }}
+            GIT_VERSION=${{ github.ref }}
+            VERSION=${{ steps.meta.outputs.version }}
+            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
