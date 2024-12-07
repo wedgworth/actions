@@ -22,7 +22,7 @@ on:
 
 jobs:
   promote-tag:
-    name: Release to Production
+    name: Production Deploy
     runs-on: ubuntu-24.04
     env:
       HEROKU_EMAIL: ${{ secrets.HEROKU_EMAIL }}
@@ -31,22 +31,22 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Setup Heroku
+        uses: wedgworth/actions/.github/actions/setup-heroku@v0.5.0
+        with:
+          api-key: ${{ secrets.HEROKU_API_KEY }}
+
       - name: Setup Docker
-        uses: wedgworth/actions/.github/actions/setup-docker@v0.4.0
+        uses: wedgworth/actions/.github/actions/setup-docker@v0.5.0
         with:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
-
-      - name: Setup Heroku
-        uses: wedgworth/actions/.github/actions/setup-heroku@v0.4.0
-        with:
-          api-key: ${{ secrets.HEROKU_API_KEY }}
 
       - name: Pull Latest Image
         run: docker pull ghcr.io/${{ github.repository }}:main'
 
       - name: Extract Tags
-        uses: wedgworth/actions/.github/actions/docker-tags@v0.4.0
+        uses: wedgworth/actions/.github/actions/docker-tags@v0.5.0
         id: meta
         with:
           tags: type=semver,pattern={{ raw }}
