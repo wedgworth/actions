@@ -25,14 +25,17 @@ jobs:
     env:
       HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - uses: wedgworth/actions/.github/actions/setup-docker@v0.3.0
+      - name: Setup Docker
+        uses: wedgworth/actions/.github/actions/setup-docker@v0.4.0
         with:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
 
-      - uses: wedgworth/actions/.github/actions/setup-heroku@v0.3.0
+      - name: Setup Heroku
+        uses: wedgworth/actions/.github/actions/setup-heroku@v0.4.0
         with:
             api-key: ${{ secrets.HEROKU_API_KEY }}
 
