@@ -29,7 +29,6 @@ jobs:
     uses: wedgworth/actions/.github/workflows/test.yml@main
     with:
       python-src-dir: ruth
-      run-worker: true
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       CR_UN: ${{ secrets.CR_UN }}
@@ -62,7 +61,7 @@ jobs:
   release:
     uses: wedgworth/actions/.github/workflows/release.yml@main
     with:
-      app-name: ruth
+      app-name: ruth-prod
       processes: web release worker
     secrets:
       HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
