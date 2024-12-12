@@ -9,12 +9,9 @@ inputs:
 runs:
   using: "composite"
   steps:
-    # - name: Install Heroku
-    #   shell: bash
-    #   run: curl https://cli-assets.heroku.com/install.sh | sh
-    - name: Install OLD Heroku
+    - name: Install Heroku
       shell: bash
-      run: npm install -g heroku@9.5.0
+      run: curl https://cli-assets.heroku.com/install.sh | sh
 
     - name: Heroku Container Login
       shell: bash
