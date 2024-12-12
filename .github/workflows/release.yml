@@ -29,12 +29,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Heroku
-        uses: wedgworth/actions/.github/actions/setup-heroku@v0.5.4
+        uses: wedgworth/actions/.github/actions/setup-heroku@v0.5.6
         with:
           api-key: ${{ secrets.HEROKU_API_KEY }}
 
       - name: Setup Docker
-        uses: wedgworth/actions/.github/actions/setup-docker@v0.5.4
+        uses: wedgworth/actions/.github/actions/setup-docker@v0.5.6
         with:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
@@ -43,7 +43,7 @@ jobs:
         run: docker pull ghcr.io/${{ github.repository }}:main
 
       - name: Extract Tags
-        uses: wedgworth/actions/.github/actions/docker-tags@v0.5.4
+        uses: wedgworth/actions/.github/actions/docker-tags@v0.5.6
         id: meta
         with:
           tags: type=semver,pattern={{ raw }}
