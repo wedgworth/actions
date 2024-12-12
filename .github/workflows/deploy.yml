@@ -52,7 +52,7 @@ jobs:
               latest_release=$(heroku releases -a ${{ inputs.app-name }} -n 1)
               echo "Latest release info:"
               echo "$latest_release"
-              if [[ "$latest_release" =~ "Release.*succeeded" ]]; then
+              if [[ "$latest_release" =~ "Deployed" ]]; then
                 echo "Latest release shows success, overriding error"
                 exit 0
               else
