@@ -13,7 +13,7 @@ runs:
     #   shell: bash
     #   run: curl https://cli-assets.heroku.com/install.sh | sh
     - name: Install OLD Heroku
-      shall: bash
+      shell: bash
       run: npm install -g heroku@9.5.1
 
     - name: Heroku Container Login
