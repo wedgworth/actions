@@ -44,4 +44,12 @@ jobs:
         working-directory: ./deploy
 
       - name: Release
-        run: heroku container:release -a ${{ inputs.app-name }} ${{ inputs.processes }} -v
+        # run: heroku container:release -a ${{ inputs.app-name }} ${{ inputs.processes }}
+        run: |
+            output=$(heroku container:release -a ${{ inputs.app-name }} ${{ inputs.processes }} 2>&1)
+            exit_code=$?
+            echo "$output"
+            if echo "$output" | grep -q "TypeError: Cannot read properties of undefined"; then
+              exit 0
+            fi
+            exit $exit_code
