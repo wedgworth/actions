@@ -44,4 +44,4 @@ jobs:
         working-directory: ./deploy
 
       - name: Release
-        run: heroku container:release -a ${{ inputs.app-name }} ${{ inputs.processes }}
+        run: heroku container:release -a ${{ inputs.app-name }} ${{ inputs.processes }} -v
