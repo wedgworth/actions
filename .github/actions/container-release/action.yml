@@ -5,7 +5,7 @@ inputs:
   api-key:
     description: Heroku's API Key
     required: true
-  api-name:
+  app-name:
     description: Heroku App Name
     required: true
   processes:
