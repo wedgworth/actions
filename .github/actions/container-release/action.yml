@@ -1,0 +1,37 @@
+name: Container Release
+description: Calls container:release via the Heroku CLI
+
+inputs:
+  api-key:
+    description: Heroku's API Key
+    required: true
+  api-name:
+    description: Heroku App Name
+    required: true
+  processes:
+    description: The list of processes to release
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Release
+      shell: bash
+      env:
+        HEROKU_API_KEY: ${{ inputs.api-key }}
+      # run: heroku container:release -a ${{ inputs.app-name }} ${{ inputs.processes }}
+      run: |
+          echo "Attempting release..."
+          if ! heroku container:release -a ${{ inputs.app-name }} ${{ inputs.processes }}; then
+            echo "Release command exited with non-zero status. Checking latest release status..."
+            latest_release=$(heroku releases -a ${{ inputs.app-name }} -n 1)
+            echo "Latest release info:"
+            echo "$latest_release"
+            if [[ "$latest_release" =~ "Deployed" ]]; then
+              echo "Latest release shows success, overriding error"
+              exit 0
+            else
+              echo "Latest release does not show success, failing"
+              exit 1
+            fi
+          fi

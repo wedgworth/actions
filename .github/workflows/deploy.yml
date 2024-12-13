@@ -43,7 +43,7 @@ jobs:
         run: heroku container:push -a ${{ inputs.app-name }} ${{ inputs.processes }} -R --arg VERSION=main,GITHUB_SHA=${{ github.sha }}
         working-directory: ./deploy
 
-      - name: Release
+      - name: Deploy
         # run: heroku container:release -a ${{ inputs.app-name }} ${{ inputs.processes }}
         run: |
             echo "Attempting release..."

@@ -62,7 +62,7 @@ jobs:
         run: heroku container:push ${{ inputs.processes }} -R -a ${{ inputs.app-name }} --arg VERSION=$GITHUB_REF_NAME
         working-directory: ./deploy
 
-      - name: Release
+      - name: Deploy
         uses: wedgworth/actions/.github/actions/container-release@main
         with:
           api-key: ${{ secrets.HEROKU_API_KEY }}
