@@ -6,6 +6,11 @@ on:
         required: true
         type: string
         description: "Directory containing Python source code to lint"
+      has-frontend:
+        required: false
+        type: boolean
+        default: true
+        description: "Whether this project has frontend code to test"
     secrets:
       CODECOV_TOKEN:
         required: true
@@ -40,6 +45,7 @@ jobs:
   install-node-deps:
     name: Install Node Dependencies
     runs-on: ubuntu-24.04
+    if: inputs.has-frontend
     steps:
       - uses: actions/checkout@v4
       - uses: wedgworth/actions/.github/actions/setup-node@main
@@ -49,6 +55,7 @@ jobs:
   test-frontend:
     name: Test - Frontend
     runs-on: ubuntu-24.04
+    if: inputs.has-frontend
     needs: [install-node-deps]
     steps:
       - uses: styfle/cancel-workflow-action@0.12.1
@@ -74,6 +81,10 @@ jobs:
     name: Build, Test and Push Images
     runs-on: ubuntu-24.04
     needs: [lint-python, test-frontend]
+    if: |
+      always() &&
+      (needs.lint-python.result == 'success') &&
+      (!inputs.has-frontend || needs.test-frontend.result == 'success')
     services:
       postgres:
         image: postgres
