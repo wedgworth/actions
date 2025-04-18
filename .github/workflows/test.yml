@@ -162,6 +162,7 @@ jobs:
 
       - name: Build and Push Production Image
         uses: docker/build-push-action@v6
+        if: ${{ github.ref == 'refs/heads/main' }}
         with:
           context: .
           file: ./.docker/Dockerfile
