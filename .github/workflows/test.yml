@@ -158,6 +158,7 @@ jobs:
           docker run \
             -v "${{ github.workspace }}/ci-shared:/opt/shared" \
             -e DATABASE_URL \
+            -e REDIS_URL \
             -e GITHUB_SHA \
             --network host\
             ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} ./test.sh
