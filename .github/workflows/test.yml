@@ -86,6 +86,13 @@ jobs:
       (needs.lint-python.result == 'success') &&
       (!inputs.has-frontend || needs.test-frontend.result == 'success')
     services:
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
       postgres:
         image: postgres
         env:
@@ -99,6 +106,7 @@ jobs:
       DATABASE_SSL: "off"
       DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres"
       DJANGO_DEBUG: 0
+      REDIS_URL: "redis://redis:6379"
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
       version: ${{ steps.meta.outputs.version }}
