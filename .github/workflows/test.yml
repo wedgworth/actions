@@ -77,6 +77,33 @@ jobs:
           coverage-file: ./js-coverage/coverage-final.json
           flags: frontend
 
+  bundle-tracking:
+    name: Bundle Tracking
+    runs-on: ubuntu-24.04
+    if: inputs.has-frontend
+    needs: [install-node-deps]
+    steps:
+      - uses: styfle/cancel-workflow-action@0.12.1
+        with:
+          access_token: ${{ github.token }}
+
+      - uses: actions/checkout@v4
+
+      - uses: wedgworth/actions/.github/actions/setup-node@main
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Build and Upload Bundle
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: yarn build
+
+      - uses: wedgworth/actions/.github/actions/report-coverage@main
+        with:
+          codecov-token: ${{ secrets.CODECOV_TOKEN }}
+          coverage-file: ./js-coverage/coverage-final.json
+          flags: frontend
+          
   build-and-push-images:
     name: Build, Test and Push Images
     runs-on: ubuntu-24.04
