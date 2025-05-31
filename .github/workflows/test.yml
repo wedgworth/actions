@@ -97,17 +97,11 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         run: yarn build
-
-      - uses: wedgworth/actions/.github/actions/report-coverage@main
-        with:
-          codecov-token: ${{ secrets.CODECOV_TOKEN }}
-          coverage-file: ./js-coverage/coverage-final.json
-          flags: frontend
           
   build-and-push-images:
     name: Build, Test and Push Images
     runs-on: ubuntu-24.04
-    needs: [lint-python, test-frontend]
+    needs: [lint-python, test-frontend, bundle-tracking]
     if: |
       always() &&
       (needs.lint-python.result == 'success') &&
