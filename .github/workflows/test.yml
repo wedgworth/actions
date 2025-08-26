@@ -100,7 +100,7 @@ jobs:
           
   build-and-push-images:
     name: Build, Test and Push Images
-    runs-on: namespace-profile-default
+    runs-on: namespace-profile-builder
     needs: [lint-python, test-frontend, bundle-tracking]
     if: |
       always() &&
