@@ -28,7 +28,7 @@ env:
 jobs:
   lint-python:
     name: Lint - Python
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: styfle/cancel-workflow-action@0.12.1
         with:
@@ -44,7 +44,7 @@ jobs:
 
   install-node-deps:
     name: Install Node Dependencies
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     if: inputs.has-frontend
     steps:
       - uses: actions/checkout@v4
@@ -54,7 +54,7 @@ jobs:
 
   test-frontend:
     name: Test - Frontend
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     if: inputs.has-frontend
     needs: [install-node-deps]
     steps:
@@ -79,7 +79,7 @@ jobs:
 
   bundle-tracking:
     name: Bundle Tracking
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     if: inputs.has-frontend
     needs: [install-node-deps]
     steps:
@@ -100,7 +100,7 @@ jobs:
           
   build-and-push-images:
     name: Build, Test and Push Images
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-16vcpu-ubuntu-2404
     needs: [lint-python, test-frontend, bundle-tracking]
     if: |
       always() &&
