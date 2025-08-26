@@ -21,7 +21,7 @@ on:
 jobs:
   deploy:
     name: Deploy
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: namespace-profile-default
     env:
       HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
     steps:
