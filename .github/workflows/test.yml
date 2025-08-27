@@ -152,7 +152,7 @@ jobs:
             type=semver,pattern={{raw}}
             type=sha
 
-      - name: Build Image
+      - name: Build Test Image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -161,13 +161,14 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           load: true
           build-args: |
+            DEV_MODE=1
             GIT_COMMIT=${{ github.sha }}
             GIT_VERSION=${{ github.ref }}
             VERSION=${{ steps.meta.outputs.version }}
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Check Migrations
-        run: docker run -e DATABASE_URL -e DEV_MODE=1 --network host ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} python manage.py makemigrations --check --dry-run
+        run: docker run -e DATABASE_URL --network host ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} python manage.py makemigrations --check --dry-run
 
       - name: Python Test
         env:
@@ -180,8 +181,7 @@ jobs:
             -e DATABASE_URL \
             -e REDIS_URL \
             -e GITHUB_SHA \
-            -e DEV_MODE=1 \
-            --network host \
+            --network host\
             ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} ./test.sh
 
       - uses: wedgworth/actions/.github/actions/report-coverage@main
@@ -190,13 +190,18 @@ jobs:
             coverage-file: ./ci-shared/coverage.xml
             flags: backend
 
-      - name: Push Image
+      - name: Build and Push Production Image
+        uses: docker/build-push-action@v6
         if: ${{ github.ref == 'refs/heads/main' }}
-        run: |
-          echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u "${{ secrets.CR_UN }}" --password-stdin
-          # steps.meta.outputs.tags is newline-separated; push each
-          while IFS= read -r tag; do
-            [ -n "$tag" ] && docker push "$tag"
-          done <<'TAGS'
-          ${{ steps.meta.outputs.tags }}
-          TAGS
+        with:
+          context: .
+          file: ./.docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            DEV_MODE=0
+            GIT_COMMIT=${{ github.sha }}
+            GIT_VERSION=${{ github.ref }}
+            VERSION=${{ steps.meta.outputs.version }}
+            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
