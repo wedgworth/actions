@@ -33,12 +33,12 @@ jobs:
       - uses: styfle/cancel-workflow-action@0.12.1
         with:
           access_token: ${{ github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Lint
-        uses: astral-sh/ruff-action@v2
+        uses: astral-sh/ruff-action@v3
         with:
           src: ${{ inputs.python-src-dir }}
 
@@ -62,7 +62,7 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: wedgworth/actions/.github/actions/setup-node@main
         with:
@@ -87,7 +87,7 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: wedgworth/actions/.github/actions/setup-node@main
         with:
@@ -134,7 +134,7 @@ jobs:
       tags: ${{ steps.meta.outputs.tags }}
       version: ${{ steps.meta.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: wedgworth/actions/.github/actions/setup-docker@main
         with:
