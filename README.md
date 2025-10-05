@@ -20,6 +20,8 @@ Here are examples of how to use it for a Heroku project with QA/prod apps called
 - `SENTRY_AUTH_TOKEN` is your auth token from Sentry with `project:write` permissions for uploading source maps.
 - `HEROKU_API_KEY` is your API key from Heroku.
 
+These need to be set as secrets in your GitHub repository.
+
 
 ### ci.yml
 
