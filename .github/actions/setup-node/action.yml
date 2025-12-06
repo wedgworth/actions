@@ -1,3 +1,4 @@
+# Retaining for backwards compaitbility as we move to pnpm with actions/setup-node-pnpm
 name: 'Setup Node'
 description: 'Sets up Node.js with caching and yarn'
 

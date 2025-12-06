@@ -22,8 +22,8 @@ on:
         required: true
 
 env:
-  PYTHON_VERSION: "3.13"
-  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.14"
+  NODE_VERSION: "22"
 
 jobs:
   lint-python:
@@ -33,8 +33,8 @@ jobs:
       - uses: styfle/cancel-workflow-action@0.12.1
         with:
           access_token: ${{ github.token }}
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Lint
@@ -47,8 +47,8 @@ jobs:
     runs-on: namespace-profile-default
     if: inputs.has-frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: wedgworth/actions/.github/actions/setup-node@main
+      - uses: actions/checkout@v6
+      - uses: wedgworth/actions/.github/actions/setup-node-pnpm@main
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -62,14 +62,14 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
-      - uses: wedgworth/actions/.github/actions/setup-node@main
+      - uses: wedgworth/actions/.github/actions/setup-node-pnpm@main
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Test
-        run: yarn test
+        run: pnpm test
 
       - uses: wedgworth/actions/.github/actions/report-coverage@main
         with:
@@ -87,16 +87,16 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
-      - uses: wedgworth/actions/.github/actions/setup-node@main
+      - uses: wedgworth/actions/.github/actions/setup-node-pnpm@main
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Build and Upload Bundle
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        run: yarn build
+        run: pnpm build
           
   build-and-push-images:
     name: Build, Test and Push Images
@@ -134,7 +134,7 @@ jobs:
       tags: ${{ steps.meta.outputs.tags }}
       version: ${{ steps.meta.outputs.version }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: wedgworth/actions/.github/actions/setup-docker@main
         with:
