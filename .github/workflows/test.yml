@@ -166,6 +166,8 @@ jobs:
             GIT_VERSION=${{ github.ref }}
             VERSION=${{ steps.meta.outputs.version }}
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+            type=registry
+            oci-mediatypes=false
 
       - name: Check Migrations
         run: docker run -e DATABASE_URL --network host ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} python manage.py makemigrations --check --dry-run
@@ -205,3 +207,5 @@ jobs:
             GIT_VERSION=${{ github.ref }}
             VERSION=${{ steps.meta.outputs.version }}
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+            type=registry
+            oci-mediatypes=false
