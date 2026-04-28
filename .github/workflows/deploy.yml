@@ -39,9 +39,22 @@ jobs:
         with:
             api-key: ${{ secrets.HEROKU_API_KEY }}
 
-      - name: Push All Processes
-        run: heroku container:push -a ${{ inputs.app-name }} ${{ inputs.processes }} -R --arg VERSION=main,GITHUB_SHA=${{ github.sha }}
+      # TEMP: Heroku registry rejects OCI mediatypes / attestations.
+      # Replace with `heroku container:push` when migrated to AWS ECS.
+      - name: Build and Push to Heroku Registry
         working-directory: ./deploy
+        run: |
+          for process in ${{ inputs.processes }}; do
+            docker buildx build \
+              --provenance=false \
+              --sbom=false \
+              --output=type=registry,oci-mediatypes=false \
+              --tag=registry.heroku.com/${{ inputs.app-name }}/$process \
+              --build-arg=VERSION=main \
+              --build-arg=GITHUB_SHA=${{ github.sha }} \
+              -f Dockerfile.$process \
+              .
+          done
 
       - name: Deploy
         run: heroku container:release -a ${{ inputs.app-name }} ${{ inputs.processes }}

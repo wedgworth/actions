@@ -58,9 +58,21 @@ jobs:
           docker push ${{ steps.meta.outputs.tags }}
           docker push ghcr.io/${{ github.repository }}:latest
 
-      - name: Push Tagged Image to Heroku
-        run: heroku container:push ${{ inputs.processes }} -R -a ${{ inputs.app-name }} --arg VERSION=$GITHUB_REF_NAME
+      # TEMP: Heroku registry rejects OCI mediatypes / attestations.
+      # Replace with `heroku container:push` when migrated to AWS ECS.
+      - name: Build and Push to Heroku Registry
         working-directory: ./deploy
+        run: |
+          for process in ${{ inputs.processes }}; do
+            docker buildx build \
+              --provenance=false \
+              --sbom=false \
+              --output=type=registry,oci-mediatypes=false \
+              --tag=registry.heroku.com/${{ inputs.app-name }}/$process \
+              --build-arg=VERSION=$GITHUB_REF_NAME \
+              -f Dockerfile.$process \
+              .
+          done
 
       - name: Release
         uses: wedgworth/actions/.github/actions/container-release@main
