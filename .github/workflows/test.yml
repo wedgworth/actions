@@ -160,8 +160,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           load: true
-          provenance: false
-          sbom: false
           build-args: |
             DEV_MODE=1
             GIT_COMMIT=${{ github.sha }}
@@ -198,11 +196,9 @@ jobs:
         with:
           context: .
           file: ./.docker/Dockerfile
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          provenance: false
-          sbom: false
-          outputs: type=registry,oci-mediatypes=false
           build-args: |
             DEV_MODE=0
             GIT_COMMIT=${{ github.sha }}
