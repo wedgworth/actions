@@ -45,8 +45,10 @@ jobs:
       - name: Pull Image
         run: docker pull ${{ inputs.image }}
 
-      - name: Create Log Placeholders
-        run: touch test.log build.log
+      - name: Download Logs
+        uses: actions/download-artifact@v4
+        with:
+          name: apppack-logs
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
