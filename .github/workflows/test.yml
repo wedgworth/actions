@@ -11,6 +11,18 @@ on:
         type: boolean
         default: true
         description: "Whether this project has frontend code to test"
+      package-manager:
+        required: false
+        type: string
+        default: "pnpm"
+        description: "Node package manager to use (pnpm or yarn)"
+    outputs:
+      version:
+        description: "Docker image version tag"
+        value: ${{ jobs.build-and-push-images.outputs.version }}
+      tags:
+        description: "Docker image tags"
+        value: ${{ jobs.build-and-push-images.outputs.tags }}
     secrets:
       CODECOV_TOKEN:
         required: true
@@ -49,6 +61,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: wedgworth/actions/.github/actions/setup-node-pnpm@main
+        if: ${{ inputs.package-manager == 'pnpm' }}
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: wedgworth/actions/.github/actions/setup-node-yarn@apppack-migration
+        if: ${{ inputs.package-manager == 'yarn' }}
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -65,11 +82,16 @@ jobs:
       - uses: actions/checkout@v6
 
       - uses: wedgworth/actions/.github/actions/setup-node-pnpm@main
+        if: ${{ inputs.package-manager == 'pnpm' }}
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: wedgworth/actions/.github/actions/setup-node-yarn@apppack-migration
+        if: ${{ inputs.package-manager == 'yarn' }}
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Test
-        run: pnpm test
+        run: ${{ inputs.package-manager }} test
 
       - uses: wedgworth/actions/.github/actions/report-coverage@main
         with:
@@ -90,13 +112,18 @@ jobs:
       - uses: actions/checkout@v6
 
       - uses: wedgworth/actions/.github/actions/setup-node-pnpm@main
+        if: ${{ inputs.package-manager == 'pnpm' }}
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: wedgworth/actions/.github/actions/setup-node-yarn@apppack-migration
+        if: ${{ inputs.package-manager == 'yarn' }}
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Build and Upload Bundle
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        run: pnpm build
+        run: ${{ inputs.package-manager }} build
           
   build-and-push-images:
     name: Build, Test and Push Images
@@ -163,6 +190,7 @@ jobs:
           build-args: |
             DEV_MODE=1
             GIT_COMMIT=${{ github.sha }}
+            GITHUB_SHA=${{ github.sha }}
             GIT_VERSION=${{ github.ref }}
             VERSION=${{ steps.meta.outputs.version }}
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -173,7 +201,9 @@ jobs:
       - name: Python Test
         env:
           GITHUB_SHA: ${{ github.sha }}
+        shell: bash
         run: |
+          set -o pipefail
           mkdir ci-shared && \
           chmod 777 ci-shared && \
           docker run \
@@ -182,7 +212,7 @@ jobs:
             -e REDIS_URL \
             -e GITHUB_SHA \
             --network host\
-            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} ./test.sh
+            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} ./test.sh 2>&1 | tee test.log
 
       - uses: wedgworth/actions/.github/actions/report-coverage@main
         with:
@@ -191,17 +221,29 @@ jobs:
             flags: backend
 
       - name: Build and Push Production Image
-        uses: docker/build-push-action@v6
-        if: ${{ github.ref == 'refs/heads/main' }}
+        id: build-prod
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/apppack-migration' || startsWith(github.ref, 'refs/tags/') }}
+        shell: bash
+        run: |
+          set -o pipefail
+          TAG_FLAGS=$(echo "${{ steps.meta.outputs.tags }}" | sed 's/^/--tag /')
+          docker buildx build \
+            --push \
+            --file ./.docker/Dockerfile \
+            $TAG_FLAGS \
+            --build-arg DEV_MODE=0 \
+            --build-arg GIT_COMMIT=${{ github.sha }} \
+            --build-arg GITHUB_SHA=${{ github.sha }} \
+            --build-arg GIT_VERSION=${{ github.ref }} \
+            --build-arg VERSION=${{ steps.meta.outputs.version }} \
+            --build-arg "SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}" \
+            . 2>&1 | tee build.log
+
+      - name: Upload Logs
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/apppack-migration' || startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
         with:
-          context: .
-          file: ./.docker/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            DEV_MODE=0
-            GIT_COMMIT=${{ github.sha }}
-            GIT_VERSION=${{ github.ref }}
-            VERSION=${{ steps.meta.outputs.version }}
-            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+          name: apppack-logs
+          path: |
+            test.log
+            build.log
