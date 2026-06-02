@@ -29,13 +29,13 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup Docker
-        uses: wedgworth/actions/.github/actions/setup-docker@main
+        uses: wedgworth/actions/.github/actions/setup-docker@v9.0.0-heroku
         with:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
 
       - name: Setup Heroku
-        uses: wedgworth/actions/.github/actions/setup-heroku@main
+        uses: wedgworth/actions/.github/actions/setup-heroku@v9.0.0-heroku
         with:
             api-key: ${{ secrets.HEROKU_API_KEY }}
 
