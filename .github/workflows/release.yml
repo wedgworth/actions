@@ -46,12 +46,12 @@ jobs:
         run: docker pull ${{ inputs.image }}
 
       - name: Download Logs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4  # TODO: Latest is v8
         with:
           name: apppack-logs
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v4  # TODO: Latest is v6
         with:
           role-to-assume: ${{ env.APPPACK_ROLE_ARN }}
           aws-region: ${{ inputs.aws-region }}

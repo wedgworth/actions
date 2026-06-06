@@ -241,7 +241,7 @@ jobs:
 
       - name: Upload Logs
         if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/apppack-migration' || startsWith(github.ref, 'refs/tags/') }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4  # TODO: Latest is v7
         with:
           name: apppack-logs
           path: |
