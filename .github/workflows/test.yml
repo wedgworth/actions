@@ -42,7 +42,7 @@ jobs:
     name: Lint - Python
     runs-on: namespace-profile-default
     steps:
-      - uses: styfle/cancel-workflow-action@0.12.1
+      - uses: styfle/cancel-workflow-action@0.13.1
         with:
           access_token: ${{ github.token }}
       - uses: actions/checkout@v6
@@ -50,7 +50,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Lint
-        uses: astral-sh/ruff-action@v3
+        uses: astral-sh/ruff-action@v4.0.0
         with:
           src: ${{ inputs.python-src-dir }}
 
@@ -75,7 +75,7 @@ jobs:
     if: inputs.has-frontend
     needs: [install-node-deps]
     steps:
-      - uses: styfle/cancel-workflow-action@0.12.1
+      - uses: styfle/cancel-workflow-action@0.13.1
         with:
           access_token: ${{ github.token }}
 
@@ -105,7 +105,7 @@ jobs:
     if: inputs.has-frontend
     needs: [install-node-deps]
     steps:
-      - uses: styfle/cancel-workflow-action@0.12.1
+      - uses: styfle/cancel-workflow-action@0.13.1
         with:
           access_token: ${{ github.token }}
 
@@ -180,7 +180,7 @@ jobs:
             type=sha
 
       - name: Build Test Image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./.docker/Dockerfile
