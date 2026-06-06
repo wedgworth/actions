@@ -38,7 +38,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Lint
-        uses: astral-sh/ruff-action@v4
+        uses: astral-sh/ruff-action@v4.0.0
         with:
           src: ${{ inputs.python-src-dir }}
 
