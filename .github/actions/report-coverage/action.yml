@@ -15,7 +15,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: codecov/codecov-action@v6.0.1
+    - uses: codecov/codecov-action@v7.0.0
       with:
         token: ${{ inputs.codecov-token }}
         files: ${{ inputs.coverage-file }}
