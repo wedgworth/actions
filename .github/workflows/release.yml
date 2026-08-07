@@ -6,10 +6,6 @@ on:
         required: true
         type: string
         description: "AppPack app name"
-      image:
-        required: true
-        type: string
-        description: "Docker image to deploy (must be pullable from ghcr.io)"
       aws-region:
         required: false
         type: string
@@ -29,9 +25,12 @@ jobs:
     runs-on: namespace-profile-default
     env:
       APPPACK_ROLE_ARN: ${{ secrets.APPPACK_ROLE_ARN }}
+      # What CI pushed when this commit landed on main. The release deploys it as-is.
+      IMAGE: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
     permissions:
       id-token: write
       contents: read
+      actions: read # lets the Build Logs step read another run's artifact
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
@@ -42,13 +41,27 @@ jobs:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
 
+      # Doubles as the gate: an unbuilt commit has no tag, so this fails the release.
       - name: Pull Image
-        run: docker pull ${{ inputs.image }}
+        run: docker pull "$IMAGE"
 
-      - name: Download Logs
-        uses: actions/download-artifact@v4  # TODO: Latest is v8
-        with:
-          name: apppack-logs
+      # Copies test.log/build.log out of the CI run that built this commit. AppPack needs
+      # both files present -- deploy-action passes them to CodeBuild's artifacts.files,
+      # which fails on a path that doesn't exist -- so a miss writes a pointer instead.
+      # Order and the -n guard are load-bearing: `gh run download` won't overwrite an
+      # existing file, and with an empty run id it grabs the artifact from another run.
+      - name: Build Logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=apppack-logs&per_page=100" \
+            --jq "first(.artifacts[] | select(.workflow_run.head_sha == \"${GITHUB_SHA}\" and .expired == false).workflow_run.id)")
+          if [ -n "$RUN" ] && gh run download "$RUN" -R "$GITHUB_REPOSITORY" --name apppack-logs; then
+            echo "Fetched build logs from run ${RUN}"
+          else
+            echo "::warning::No apppack-logs artifact for ${GITHUB_SHA}; writing a pointer instead."
+            echo "Promoted from ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}/checks" | tee test.log build.log
+          fi
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4  # TODO: Latest is v6
@@ -60,4 +73,4 @@ jobs:
         uses: apppackio/deploy-action@v2
         with:
           appname: ${{ inputs.app-name }}
-          image: ${{ inputs.image }}
+          image: ${{ env.IMAGE }}

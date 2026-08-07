@@ -6,9 +6,10 @@ These shared workflows implement the commmon patterns of how we deploy web appli
 - Test JavaScript Code
 - Build a Test Image using the app's Dockerfile so that tests run in a near production like environment
 - Upload coverage information from JS Tests and Python tests to Codecov
-- Build a Production image
+- Build a Production image and push it to `ghcr.io`, tagged `sha-<commit-sha>`
 - if on `main`, Deploy to QA
-- if a Release, Deploy to Production
+- if a Release, deploy that same `sha-<commit-sha>` image to Production — no rebuild.
+  A release of a commit that never landed on `main` fails rather than building one.
 - assumes use of [Namespace.so](https://namespace.so/) runners which are far better than GitHub's included ones (maybe there is a way to make this configurable so others who want to use stock runners can do so -- PRs welcome!)
 
 ## Usage
@@ -61,6 +62,7 @@ jobs:
 
 
 ### release.yml
+
 ```yaml
 # myapp/.github/workflows/release.yml
 name: Release
@@ -72,11 +74,10 @@ jobs:
   release:
     uses: wedgworth/actions/.github/workflows/release.yml@main
     with:
-      app-name: my-heroku-prod-app
-      processes: web release worker
+      app-name: my-apppack-prod-app
     secrets:
-      HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
       CR_UN: ${{ secrets.CR_UN }}
       CR_PAT: ${{ secrets.CR_PAT }}
+      APPPACK_ROLE_ARN: ${{ secrets.APPPACK_ROLE_ARN }}
 ```
 
