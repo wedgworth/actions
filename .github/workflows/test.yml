@@ -64,7 +64,7 @@ jobs:
         if: ${{ inputs.package-manager == 'pnpm' }}
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: wedgworth/actions/.github/actions/setup-node-yarn@apppack-migration
+      - uses: wedgworth/actions/.github/actions/setup-node-yarn@main
         if: ${{ inputs.package-manager == 'yarn' }}
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -85,7 +85,7 @@ jobs:
         if: ${{ inputs.package-manager == 'pnpm' }}
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: wedgworth/actions/.github/actions/setup-node-yarn@apppack-migration
+      - uses: wedgworth/actions/.github/actions/setup-node-yarn@main
         if: ${{ inputs.package-manager == 'yarn' }}
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -115,7 +115,7 @@ jobs:
         if: ${{ inputs.package-manager == 'pnpm' }}
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: wedgworth/actions/.github/actions/setup-node-yarn@apppack-migration
+      - uses: wedgworth/actions/.github/actions/setup-node-yarn@main
         if: ${{ inputs.package-manager == 'yarn' }}
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -178,6 +178,7 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{raw}}
             type=sha
+            type=sha,format=long # release.yml promotes this tag; full sha needs no shell to build the ref
 
       - name: Build Test Image
         uses: docker/build-push-action@v7
@@ -222,7 +223,7 @@ jobs:
 
       - name: Build and Push Production Image
         id: build-prod
-        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/apppack-migration' || startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         shell: bash
         run: |
           set -o pipefail
@@ -240,7 +241,7 @@ jobs:
             . 2>&1 | tee build.log
 
       - name: Upload Logs
-        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/apppack-migration' || startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         uses: actions/upload-artifact@v4  # TODO: Latest is v7
         with:
           name: apppack-logs
