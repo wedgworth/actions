@@ -25,8 +25,10 @@ jobs:
     runs-on: namespace-profile-default
     env:
       APPPACK_ROLE_ARN: ${{ secrets.APPPACK_ROLE_ARN }}
-      # What CI pushed when this commit landed on main. The release deploys it as-is.
+      # What CI pushed when this commit landed on main. The release stamps the tag
+      # onto it and deploys the result; the tested layers are never rebuilt.
       IMAGE: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+      RELEASE_IMAGE: ghcr.io/${{ github.repository }}:${{ github.event.release.tag_name }}
     permissions:
       id-token: write
       contents: read
@@ -44,6 +46,15 @@ jobs:
       # Doubles as the gate: an unbuilt commit has no tag, so this fails the release.
       - name: Pull Image
         run: docker pull "$IMAGE"
+
+      # The main-branch image is built before the release tag exists, so it carries
+      # VERSION=main (apps fall back to the sha). Bake the tag in with a single
+      # metadata layer -- no rebuild of the tested layers.
+      - name: Stamp Release Version
+        run: |
+          printf 'FROM %s\nENV VERSION=%s\n' "$IMAGE" "${{ github.event.release.tag_name }}" \
+            | docker build -t "$RELEASE_IMAGE" -
+          docker push "$RELEASE_IMAGE"
 
       # Copies test.log/build.log out of the CI run that built this commit. AppPack needs
       # both files present -- deploy-action passes them to CodeBuild's artifacts.files,
@@ -73,4 +84,4 @@ jobs:
         uses: apppackio/deploy-action@v2
         with:
           appname: ${{ inputs.app-name }}
-          image: ${{ env.IMAGE }}
+          image: ${{ env.RELEASE_IMAGE }}
