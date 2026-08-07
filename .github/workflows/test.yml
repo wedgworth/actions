@@ -172,13 +172,14 @@ jobs:
         uses: wedgworth/actions/.github/actions/docker-tags@main
         id: meta
         with:
+          # full-sha tag: release.yml promotes it; full sha needs no shell to build the ref
           tags: |
             type=ref,event=branch
             type=ref,event=tag
             type=ref,event=pr
             type=semver,pattern={{raw}}
             type=sha
-            type=sha,format=long # release.yml promotes this tag; full sha needs no shell to build the ref
+            type=sha,format=long
 
       - name: Build Test Image
         uses: docker/build-push-action@v7
