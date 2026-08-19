@@ -181,6 +181,12 @@ jobs:
             type=sha
             type=sha,format=long
 
+      # v7-base Dockerfiles consume .npmrc and SENTRY_AUTH_TOKEN as BuildKit
+      # secret mounts so they never land in image layers. The file must exist
+      # for the secret-files mount even in projects without an .npmrc.
+      - name: Ensure .npmrc exists for secret mount
+        run: touch .npmrc
+
       - name: Build Test Image
         uses: docker/build-push-action@v7
         with:
@@ -189,6 +195,13 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           load: true
+          secrets: |
+            sentry-auth-token=${{ secrets.SENTRY_AUTH_TOKEN }}
+          secret-files: |
+            npmrc=.npmrc
+          # SENTRY_AUTH_TOKEN build-arg is kept for projects still on pre-v7
+          # Dockerfiles (ARG/ENV pattern); v7 Dockerfiles ignore it. Remove it
+          # once every project has migrated to the secret mounts.
           build-args: |
             DEV_MODE=1
             GIT_COMMIT=${{ github.sha }}
@@ -226,13 +239,19 @@ jobs:
         id: build-prod
         if: ${{ github.ref == 'refs/heads/main' }}
         shell: bash
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: |
           set -o pipefail
           TAG_FLAGS=$(echo "${{ steps.meta.outputs.tags }}" | sed 's/^/--tag /')
+          # Secret mounts for v7 Dockerfiles; the SENTRY_AUTH_TOKEN build-arg
+          # remains for pre-v7 Dockerfiles and is ignored by v7 ones.
           docker buildx build \
             --push \
             --file ./.docker/Dockerfile \
             $TAG_FLAGS \
+            --secret id=npmrc,src=.npmrc \
+            --secret id=sentry-auth-token,env=SENTRY_AUTH_TOKEN \
             --build-arg DEV_MODE=0 \
             --build-arg GIT_COMMIT=${{ github.sha }} \
             --build-arg GITHUB_SHA=${{ github.sha }} \
