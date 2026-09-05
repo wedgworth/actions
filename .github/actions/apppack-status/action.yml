@@ -1,0 +1,46 @@
+name: AppPack Status
+description: Check tracking permissions or wait for one phase of an exact AppPack build
+
+inputs:
+  app-name:
+    description: AppPack app name
+    required: true
+  phase:
+    description: preflight, build, test, finalize, release, or deploy
+    required: true
+  build-number:
+    description: Build number returned by apppackio/deploy-action
+    required: false
+  build-arn:
+    description: Build ARN returned by apppackio/deploy-action
+    required: false
+  timeout-seconds:
+    description: Maximum time to wait for this phase
+    default: "1200"
+
+runs:
+  using: composite
+  steps:
+    - name: Install AWS CLI if needed
+      if: inputs.phase == 'preflight'
+      shell: bash
+      run: |
+        if ! command -v aws >/dev/null; then
+          cli_dir=$(mktemp -d "$RUNNER_TEMP/apppack-aws.XXXXXX")
+          curl --fail --silent --show-error --location \
+            "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m)-2.36.25.zip" \
+            --output "$cli_dir/aws.zip"
+          unzip -q "$cli_dir/aws.zip" -d "$cli_dir"
+          "$cli_dir/aws/install" --install-dir "$cli_dir/install" --bin-dir "$cli_dir/bin"
+          echo "$cli_dir/bin" >> "$GITHUB_PATH"
+        fi
+    - name: Check AppPack phase
+      shell: bash
+      env:
+        APPPACK_STATUS_SCRIPT: ${{ github.action_path }}/wait.py
+        APPPACK_APP_NAME: ${{ inputs.app-name }}
+        APPPACK_PHASE: ${{ inputs.phase }}
+        APPPACK_BUILD_NUMBER: ${{ inputs.build-number }}
+        APPPACK_BUILD_ARN: ${{ inputs.build-arn }}
+        APPPACK_TIMEOUT_SECONDS: ${{ inputs.timeout-seconds }}
+      run: python3 "$APPPACK_STATUS_SCRIPT"

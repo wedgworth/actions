@@ -1,0 +1,25 @@
+name: Test AppPack Status
+on:
+  push:
+    paths:
+      - .github/actions/apppack-status/**
+      - .github/workflows/test-apppack-status.yml
+      - tests/**
+  pull_request:
+    paths:
+      - .github/actions/apppack-status/**
+      - .github/workflows/test-apppack-status.yml
+      - tests/**
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - run: python3 -m unittest discover -s tests -v

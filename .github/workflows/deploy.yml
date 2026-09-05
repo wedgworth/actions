@@ -10,6 +10,11 @@ on:
         required: true
         type: string
         description: "Docker image to deploy (ghcr.io reference)"
+      promote-release:
+        required: false
+        type: boolean
+        default: false
+        description: "Stamp the GitHub release tag onto the image and fetch logs from its CI run"
       aws-region:
         required: false
         type: string
@@ -25,13 +30,21 @@ on:
 
 jobs:
   deploy:
-    name: Deploy
+    name: ${{ inputs.promote-release && 'Production Deploy' || 'Deploy' }}
     runs-on: namespace-profile-default
+    timeout-minutes: 45
+    concurrency:
+      group: apppack-${{ github.repository }}-${{ inputs.app-name }}
+      cancel-in-progress: false
     env:
       APPPACK_ROLE_ARN: ${{ secrets.APPPACK_ROLE_ARN }}
+      IMAGE: ${{ inputs.image }}
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      DEPLOY_IMAGE: ${{ inputs.promote-release && format('ghcr.io/{0}:{1}', github.repository, github.event.release.tag_name) || inputs.image }}
     permissions:
       id-token: write
       contents: read
+      actions: read # release promotion reads the original CI run's logs
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
@@ -43,12 +56,42 @@ jobs:
           cr-token: ${{ secrets.CR_PAT }}
 
       - name: Pull Image
-        run: docker pull ${{ inputs.image }}
+        run: docker pull "$IMAGE"
+
+      # Keep the tested layers; only add the release version as image metadata.
+      - name: Stamp Release Version
+        if: inputs.promote-release
+        run: |
+          if [ -z "$RELEASE_TAG" ]; then
+            echo "::error::Release promotion requires a GitHub release tag."
+            exit 1
+          fi
+          printf 'FROM %s\nENV VERSION=%s\n' "$IMAGE" "$RELEASE_TAG" \
+            | docker build -t "$DEPLOY_IMAGE" -
+          docker push "$DEPLOY_IMAGE"
 
       - name: Download Logs
+        if: ${{ !inputs.promote-release }}
         uses: actions/download-artifact@v4  # TODO: Latest is v8
         with:
           name: apppack-logs
+
+      # Releases reuse the original CI run's logs. AppPack requires both files;
+      # an expired/missing artifact gets a pointer to that commit's checks.
+      - name: Build Logs
+        if: inputs.promote-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=apppack-logs&per_page=100" \
+            --jq "first(.artifacts[] | select(.workflow_run.head_sha == \"${GITHUB_SHA}\" and .expired == false).workflow_run.id)")
+          # Never download with an empty run ID: it could select another commit.
+          if [ -n "$RUN" ] && gh run download "$RUN" -R "$GITHUB_REPOSITORY" --name apppack-logs; then
+            echo "Fetched build logs from run ${RUN}"
+          else
+            echo "::warning::No apppack-logs artifact for ${GITHUB_SHA}; writing a pointer instead."
+            echo "Promoted from ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}/checks" | tee test.log build.log
+          fi
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4  # TODO: Latest is v6
@@ -56,8 +99,55 @@ jobs:
           role-to-assume: ${{ env.APPPACK_ROLE_ARN }}
           aws-region: ${{ inputs.aws-region }}
 
-      - name: AppPack Deploy
+      - name: Check AppPack Tracking Permissions
+        uses: wedgworth/actions/.github/actions/apppack-status@v13.0.0
+        with:
+          app-name: ${{ inputs.app-name }}
+          phase: preflight
+
+      - name: Start AppPack Deployment
+        id: apppack
         uses: apppackio/deploy-action@v2
         with:
           appname: ${{ inputs.app-name }}
-          image: ${{ inputs.image }}
+          image: ${{ env.DEPLOY_IMAGE }}
+
+      - name: AppPack / Build
+        uses: wedgworth/actions/.github/actions/apppack-status@v13.0.0
+        with:
+          app-name: ${{ inputs.app-name }}
+          build-number: ${{ steps.apppack.outputs.build_number }}
+          build-arn: ${{ steps.apppack.outputs.build_arn }}
+          phase: build
+
+      - name: AppPack / Test
+        uses: wedgworth/actions/.github/actions/apppack-status@v13.0.0
+        with:
+          app-name: ${{ inputs.app-name }}
+          build-number: ${{ steps.apppack.outputs.build_number }}
+          build-arn: ${{ steps.apppack.outputs.build_arn }}
+          phase: test
+
+      - name: AppPack / Finalize
+        uses: wedgworth/actions/.github/actions/apppack-status@v13.0.0
+        with:
+          app-name: ${{ inputs.app-name }}
+          build-number: ${{ steps.apppack.outputs.build_number }}
+          build-arn: ${{ steps.apppack.outputs.build_arn }}
+          phase: finalize
+
+      - name: AppPack / Release
+        uses: wedgworth/actions/.github/actions/apppack-status@v13.0.0
+        with:
+          app-name: ${{ inputs.app-name }}
+          build-number: ${{ steps.apppack.outputs.build_number }}
+          build-arn: ${{ steps.apppack.outputs.build_arn }}
+          phase: release
+
+      - name: AppPack / Deploy
+        uses: wedgworth/actions/.github/actions/apppack-status@v13.0.0
+        with:
+          app-name: ${{ inputs.app-name }}
+          build-number: ${{ steps.apppack.outputs.build_number }}
+          build-arn: ${{ steps.apppack.outputs.build_arn }}
+          phase: deploy
