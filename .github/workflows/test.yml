@@ -219,13 +219,21 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          mkdir ci-shared && \
-          chmod 777 ci-shared && \
+          mkdir ci-shared
+          chmod 777 ci-shared
+
+          # Increase CPUs available to run tests via xdist
+          HOST_CPUS="$(nproc)"
+          echo "Host nproc=${HOST_CPUS}"
+          
           docker run \
+            --cpus="${HOST_CPUS}" \
+            --cpuset-cpus="0-$((HOST_CPUS - 1))" \
             -v "${{ github.workspace }}/ci-shared:/opt/shared" \
             -e DATABASE_URL \
             -e REDIS_URL \
             -e GITHUB_SHA \
+            -e PYTEST_ADDOPTS="-n ${HOST_CPUS}" \
             --network host\
             ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} ./test.sh 2>&1 | tee test.log
 
