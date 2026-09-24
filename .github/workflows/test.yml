@@ -149,9 +149,10 @@ jobs:
           POSTGRES_DB: postgres
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+          POSTGRES_INITDB_ARGS: "-c max_locks_per_transaction=256"
         ports:
           - 5432:5432
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5 --shm-size=1g
     env:
       DATABASE_SSL: "off"
       DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres"
