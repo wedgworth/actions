@@ -101,7 +101,7 @@ jobs:
 
   bundle-tracking:
     name: Bundle Tracking
-    runs-on: namespace-profile-small
+    runs-on: namespace-profile-default
     if: inputs.has-frontend
     needs: [install-node-deps]
     steps:
