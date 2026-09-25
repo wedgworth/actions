@@ -208,6 +208,37 @@ jobs:
             VERSION=${{ steps.meta.outputs.version }}
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
 
+      # Main only: build the prod image while tests run and push it under a candidate tag.
+      # Nothing deploys or promotes candidate-* tags; push-image adds the real tags once all checks pass.
+      - name: Start Production Image Build
+        if: ${{ github.ref == 'refs/heads/main' }}
+        shell: bash
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          CANDIDATE="ghcr.io/${GITHUB_REPOSITORY,,}:candidate-${GITHUB_SHA}"
+          # Secret mounts for v7 Dockerfiles; the SENTRY_AUTH_TOKEN build-arg
+          # remains for pre-v7 Dockerfiles and is ignored by v7 ones.
+          # set +e so a failed build still writes build.exit for the wait step.
+          (
+            set +e
+            docker buildx build \
+              --push \
+              --file ./.docker/Dockerfile \
+              --tag "$CANDIDATE" \
+              --secret id=npmrc,src=.npmrc \
+              --secret id=sentry-auth-token,env=SENTRY_AUTH_TOKEN \
+              --build-arg DEV_MODE=0 \
+              --build-arg GIT_COMMIT=${GITHUB_SHA} \
+              --build-arg GITHUB_SHA=${GITHUB_SHA} \
+              --build-arg GIT_VERSION=${GITHUB_REF} \
+              --build-arg VERSION=${VERSION} \
+              --build-arg "SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}" \
+              . > build.log 2>&1
+            echo $? > build.exit
+          ) &
+
       - name: Check Migrations
         run: docker run -e DATABASE_URL --network host ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }} python manage.py makemigrations --check --dry-run
 
@@ -241,18 +272,29 @@ jobs:
             coverage-file: ./ci-shared/coverage.xml
             flags: backend
 
-      # push-image runs on another runner; it bundles this with build.log for AppPack.
-      - name: Upload Test Log
+      - name: Wait for Production Image Build
+        if: ${{ github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          for _ in $(seq 1 900); do [ -f build.exit ] && break; sleep 2; done
+          cat build.log
+          [ -f build.exit ] || { echo "::error::Production image build did not finish in 30 minutes"; exit 1; }
+          exit "$(cat build.exit)"
+
+      - name: Upload Logs
         if: ${{ github.ref == 'refs/heads/main' }}
         uses: actions/upload-artifact@v4  # TODO: Latest is v7
         with:
-          name: test-log
-          path: test.log
+          name: apppack-logs
+          path: |
+            test.log
+            build.log
 
-  # Main only: push the prod image once every check has passed.
+  # Main only: once every check has passed, add the real tags to the candidate image.
+  # A registry-side retag, so no build runs here.
   push-image:
     name: Push Image
-    runs-on: namespace-profile-builder
+    runs-on: namespace-profile-small
     needs: [lint-python, test-frontend, build-and-test]
     if: |
       always() &&
@@ -261,62 +303,20 @@ jobs:
       (!inputs.has-frontend || needs.test-frontend.result == 'success') &&
       (needs.build-and-test.result == 'success')
     steps:
-      - uses: actions/checkout@v6
-
       - uses: wedgworth/actions/.github/actions/setup-docker@main
         with:
           cr-username: ${{ secrets.CR_UN }}
           cr-token: ${{ secrets.CR_PAT }}
 
-      - name: Extract Tags
-        uses: wedgworth/actions/.github/actions/docker-tags@main
-        id: meta
-        with:
-          # full-sha tag: release.yml promotes it; full sha needs no shell to build the ref
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=ref,event=pr
-            type=semver,pattern={{raw}}
-            type=sha
-            type=sha,format=long
-
-      - name: Ensure .npmrc exists for secret mount
-        run: touch .npmrc
-
-      - name: Download Test Log
-        uses: actions/download-artifact@v4  # TODO: Latest is v8
-        with:
-          name: test-log
-
-      - name: Build and Push Production Image
-        id: build-prod
+      - name: Tag Production Image
         shell: bash
         env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          TAGS: ${{ needs.build-and-test.outputs.tags }}
         run: |
-          set -o pipefail
-          TAG_FLAGS=$(echo "${{ steps.meta.outputs.tags }}" | sed 's/^/--tag /')
-          # Secret mounts for v7 Dockerfiles; the SENTRY_AUTH_TOKEN build-arg
-          # remains for pre-v7 Dockerfiles and is ignored by v7 ones.
-          docker buildx build \
-            --push \
-            --file ./.docker/Dockerfile \
-            $TAG_FLAGS \
-            --secret id=npmrc,src=.npmrc \
-            --secret id=sentry-auth-token,env=SENTRY_AUTH_TOKEN \
-            --build-arg DEV_MODE=0 \
-            --build-arg GIT_COMMIT=${{ github.sha }} \
-            --build-arg GITHUB_SHA=${{ github.sha }} \
-            --build-arg GIT_VERSION=${{ github.ref }} \
-            --build-arg VERSION=${{ steps.meta.outputs.version }} \
-            --build-arg "SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}" \
-            . 2>&1 | tee build.log
-
-      - name: Upload Logs
-        uses: actions/upload-artifact@v4  # TODO: Latest is v7
-        with:
-          name: apppack-logs
-          path: |
-            test.log
-            build.log
+          set -euo pipefail
+          CANDIDATE="ghcr.io/${GITHUB_REPOSITORY,,}:candidate-${GITHUB_SHA}"
+          TAG_FLAGS=()
+          while read -r tag; do
+            if [ -n "$tag" ]; then TAG_FLAGS+=(--tag "$tag"); fi
+          done <<< "$TAGS"
+          docker buildx imagetools create "${TAG_FLAGS[@]}" "$CANDIDATE"
