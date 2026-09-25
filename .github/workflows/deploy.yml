@@ -31,7 +31,7 @@ on:
 jobs:
   deploy:
     name: ${{ inputs.promote-release && 'Production Deploy' || 'Deploy' }}
-    runs-on: namespace-profile-default
+    runs-on: namespace-profile-small
     timeout-minutes: 45
     concurrency:
       group: apppack-${{ github.repository }}-${{ inputs.app-name }}
