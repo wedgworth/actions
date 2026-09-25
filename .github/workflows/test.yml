@@ -220,6 +220,8 @@ jobs:
           CANDIDATE="ghcr.io/${GITHUB_REPOSITORY,,}:candidate-${GITHUB_SHA}"
           # Secret mounts for v7 Dockerfiles; the SENTRY_AUTH_TOKEN build-arg
           # remains for pre-v7 Dockerfiles and is ignored by v7 ones.
+          # SENTRY_RELEASE is prod-only: the test build leaves it unset so frontend layers
+          # stay cached across commits (Dockerfiles that don't declare it ignore it).
           # set +e so a failed build still writes build.exit for the wait step.
           (
             set +e
@@ -234,6 +236,7 @@ jobs:
               --build-arg GITHUB_SHA=${GITHUB_SHA} \
               --build-arg GIT_VERSION=${GITHUB_REF} \
               --build-arg VERSION=${VERSION} \
+              --build-arg SENTRY_RELEASE=${GITHUB_SHA} \
               --build-arg "SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}" \
               . > build.log 2>&1
             echo $? > build.exit
