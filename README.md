@@ -24,6 +24,24 @@ Here are examples for an AppPack project with QA/prod apps called `my-apppack-qa
 
 These need to be set as secrets in your GitHub repository.
 
+### Extra build secrets (optional)
+
+Pass more BuildKit secrets to `test.yml` with `BUILD_SECRETS`, one `NAME=value` per line, built from your own repo secrets:
+
+```yaml
+    secrets:
+      BUILD_SECRETS: |
+        MAXMIND_LICENSE_KEY=${{ secrets.MAXMIND_LICENSE_KEY }}
+```
+
+Each entry is mounted in both the test and production builds as `id=NAME`:
+
+```dockerfile
+RUN --mount=type=secret,id=MAXMIND_LICENSE_KEY cat /run/secrets/MAXMIND_LICENSE_KEY
+```
+
+Names must match `^[A-Z][A-Z0-9_]*$`. Values are masked in logs, never become build args or image layers, and cannot contain newlines. Empty values (a missing repo secret, Dependabot runs) are skipped with a warning.
+
 
 ### ci.yml
 
