@@ -32,6 +32,9 @@ on:
         required: true
       SENTRY_AUTH_TOKEN:
         required: true
+      BUILD_SECRETS:
+        required: false
+        description: "Extra BuildKit secrets, one NAME=value per line; Dockerfiles mount them with --mount=type=secret,id=NAME"
 
 env:
   PYTHON_VERSION: "3.14"
@@ -185,6 +188,42 @@ jobs:
       - name: Ensure .npmrc exists for secret mount
         run: touch .npmrc
 
+      # Extra BuildKit secrets a project opts into with BUILD_SECRETS (one NAME=value per line).
+      # Values reach the script through env (never interpolated into it), are masked, and are
+      # written to owner-only files that both builds mount and the last step deletes.
+      - name: Prepare Build Secrets
+        id: build-secrets
+        shell: bash
+        env:
+          BUILD_SECRETS: ${{ secrets.BUILD_SECRETS }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/build-secrets"
+          mkdir -p "$dir"
+          chmod 700 "$dir"
+          files=""
+          while IFS= read -r line || [ -n "$line" ]; do
+            [ -n "${line//[[:space:]]/}" ] || continue
+            name="${line%%=*}"
+            if [[ "$line" != *=* || ! "$name" =~ ^[A-Z][A-Z0-9_]*$ ]]; then
+              echo "::error::BUILD_SECRETS lines must be NAME=value with NAME matching ^[A-Z][A-Z0-9_]*\$"
+              exit 1
+            fi
+            value="${line#*=}"
+            if [ -z "$value" ]; then
+              echo "::warning::Build secret $name is empty; skipping it"
+              continue
+            fi
+            echo "::add-mask::$value"
+            (umask 077 && printf '%s' "$value" > "$dir/$name")
+            files+="$name=$dir/$name"$'\n'
+          done <<< "${BUILD_SECRETS:-}"
+          {
+            echo "files<<EOF"
+            printf '%s' "$files"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build Test Image
         uses: docker/build-push-action@v7
         with:
@@ -197,6 +236,7 @@ jobs:
             sentry-auth-token=${{ secrets.SENTRY_AUTH_TOKEN }}
           secret-files: |
             npmrc=.npmrc
+            ${{ steps.build-secrets.outputs.files }}
           # SENTRY_AUTH_TOKEN build-arg is kept for projects still on pre-v7
           # Dockerfiles (ARG/ENV pattern); v7 Dockerfiles ignore it. Remove it
           # once every project has migrated to the secret mounts.
@@ -216,8 +256,13 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           VERSION: ${{ steps.meta.outputs.version }}
+          BUILD_SECRET_FILES: ${{ steps.build-secrets.outputs.files }}
         run: |
           CANDIDATE="ghcr.io/${GITHUB_REPOSITORY,,}:candidate-${GITHUB_SHA}"
+          SECRET_FLAGS=()
+          while IFS='=' read -r name path; do
+            if [ -n "$name" ]; then SECRET_FLAGS+=(--secret "id=$name,src=$path"); fi
+          done <<< "$BUILD_SECRET_FILES"
           # Secret mounts for v7 Dockerfiles; the SENTRY_AUTH_TOKEN build-arg
           # remains for pre-v7 Dockerfiles and is ignored by v7 ones.
           # SENTRY_RELEASE is prod-only: the test build leaves it unset so frontend layers
@@ -231,6 +276,7 @@ jobs:
               --tag "$CANDIDATE" \
               --secret id=npmrc,src=.npmrc \
               --secret id=sentry-auth-token,env=SENTRY_AUTH_TOKEN \
+              ${SECRET_FLAGS[@]+"${SECRET_FLAGS[@]}"} \
               --build-arg DEV_MODE=0 \
               --build-arg GIT_COMMIT=${GITHUB_SHA} \
               --build-arg GITHUB_SHA=${GITHUB_SHA} \
@@ -292,6 +338,11 @@ jobs:
           path: |
             test.log
             build.log
+
+      - name: Remove Build Secrets
+        if: always()
+        shell: bash
+        run: rm -rf "$RUNNER_TEMP/build-secrets"
 
   # Main only: once every check has passed, add the real tags to the candidate image.
   # A registry-side retag, so no build runs here.
