@@ -37,7 +37,7 @@ on:
         description: "Extra BuildKit secrets, one NAME=value per line; Dockerfiles mount them with --mount=type=secret,id=NAME"
 
 env:
-  PYTHON_VERSION: "3.14"
+  PYTHON_VERSION: "3.15"
   NODE_VERSION: "22"
 
 jobs:
